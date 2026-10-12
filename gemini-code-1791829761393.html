@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Transferencia de Tecnología & Registros</title>
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+            
+            /* Paleta Solicitada */
+            --navy-blue: rgb(0, 32, 96);       /* #002060 */
+            --teal-cyan: rgb(0, 153, 153);    /* #009999 */
+            
+            /* Semáforo (3 estados) */
+            --status-tiempo: #10b981;    /* Verde */
+            --status-retraso: #ef4444;   /* Rojo */
+            --status-concluido: #3b82f6; /* Azul */
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --navy-blue: #1e3a8a;
+            --teal-cyan: #0d9488;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Tahoma, Geneva, sans-serif !important;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--navy-blue);
+        }
+
+        .header-titles h1 {
+            color: var(--navy-blue);
+            font-size: 24px;
+            font-weight: bold;
+            outline: none;
+        }
+
+        [data-theme="dark"] .header-titles h1 {
+            color: #60a5fa;
+        }
+
+        .header-titles p {
+            color: var(--text-muted);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .controls-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            background-color: var(--navy-blue);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-teal {
+            background-color: var(--teal-cyan);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        /* KPI Section */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-top: 4px solid var(--navy-blue);
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .kpi-card.teal-top {
+            border-top-color: var(--teal-cyan);
+        }
+
+        .kpi-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-size: 26px;
+            font-weight: bold;
+            color: var(--navy-blue);
+        }
+
+        [data-theme="dark"] .kpi-value {
+            color: #93c5fd;
+        }
+
+        /* Cumplimiento Bar Chart inside KPI */
+        .kpi-bar-container {
+            margin-top: 10px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .kpi-bar-segment {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--navy-blue);
+        }
+
+        [data-theme="dark"] .card-title {
+            color: #93c5fd;
+        }
+
+        /* Tablas */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th {
+            background-color: var(--navy-blue);
+            color: white;
+            text-align: left;
+            padding: 10px;
+            font-weight: bold;
+            border: 1px solid var(--navy-blue);
+        }
+
+        td {
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .filter-row th {
+            background-color: var(--card-bg);
+            padding: 4px;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 4px 6px;
+            font-size: 11px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .parent-row {
+            background-color: rgba(0, 32, 96, 0.03);
+            font-weight: bold;
+        }
+
+        .sub-row {
+            background-color: var(--card-bg);
+        }
+
+        .indent {
+            padding-left: 25px !important;
+            color: var(--text-muted);
+        }
+
+        /* Controles de Porcentaje Dual (Slider + Numeric Input) */
+        .percent-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .percent-control input[type="range"] {
+            width: 70px;
+            accent-color: var(--teal-cyan);
+            cursor: pointer;
+        }
+
+        .percent-control input[type="number"] {
+            width: 55px;
+            padding: 3px 5px;
+            font-size: 11px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            text-align: right;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        /* Select de Semáforo (3 opciones) */
+        .status-select {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            outline: none;
+        }
+
+        .status-select.tiempo {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-color: #10b981;
+        }
+
+        .status-select.retraso {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-color: #ef4444;
+        }
+
+        .status-select.concluido {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-color: #3b82f6;
+        }
+
+        /* Gráficos Macro */
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+
+        /* Raw Data Tables for Charts */
+        .raw-data-toggle {
+            font-size: 11px;
+            color: var(--teal-cyan);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .raw-data-panel {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .raw-data-panel.active {
+            display: block;
+        }
+
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        /* Print / PDF Styles */
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+                padding: 0;
+            }
+            .controls-bar, .raw-data-toggle, .filter-row {
+                display: none !important;
+            }
+            .card {
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
+            .percent-control input[type="range"] {
+                display: none;
+            }
+            .percent-control input[type="number"] {
+                border: none;
+                background: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Principal -->
+    <div class="header">
+        <div class="header-titles">
+            <h1 contenteditable="true">Dashboard de Transferencia de Tecnología & Registros</h1>
+            <p contenteditable="true">Control Operativo Gerencial | Seguimiento de Materias Primas / APIs</p>
+        </div>
+        <div class="controls-bar">
+            <button class="btn btn-outline" onclick="toggleTheme()">🌓 Modo Claro/Oscuro</button>
+            <button class="btn btn-teal" onclick="exportCSV()">📊 Exportar Excel</button>
+            <button class="btn" onclick="window.print()">🖨️ PDF / Imprimir</button>
+        </div>
+    </div>
+
+    <!-- Indicadores Clave KPI -->
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-label">Total de Productos</div>
+            <div class="kpi-value" id="kpi-total">7</div>
+        </div>
+        <div class="kpi-card teal-top">
+            <div class="kpi-label">Proyectos a Tiempo</div>
+            <div class="kpi-value" id="kpi-tiempo">5</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Proyectos a Tiempo por Mes</div>
+            <div class="kpi-value" id="kpi-mes">2</div>
+        </div>
+        <div class="kpi-card teal-top">
+            <div class="kpi-label">Proyecto a Tiempo Global (% Cumplimiento)</div>
+            <div class="kpi-value" id="kpi-global">71.4%</div>
+            <!-- Gráfica de Barra Integrada -->
+            <div class="kpi-bar-container">
+                <div class="kpi-bar-segment" id="kpi-bar-tiempo" style="width: 71.4%; background-color: var(--status-tiempo);" title="En Tiempo"></div>
+                <div class="kpi-bar-segment" id="kpi-bar-retraso" style="width: 14.3%; background-color: var(--status-retraso);" title="Retrasado"></div>
+                <div class="kpi-bar-segment" id="kpi-bar-concluido" style="width: 14.3%; background-color: var(--status-concluido);" title="Concluido"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal Grid -->
+    <div class="dashboard-grid">
+
+        <!-- Tabla Maestra / Reporte de Seguimiento -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title" contenteditable="true">Reporte de Seguimiento: Materias Primas / APIs</div>
+                <div>
+                    <button class="btn btn-outline" onclick="toggleExpandAll()">↕️ Expandir / Contraer Todo</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="masterTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Prioridad</th>
+                            <th>Materia Prima / Hito</th>
+                            <th>Fabricante</th>
+                            <th>Responsable</th>
+                            <th style="width: 130px;">Estatus</th>
+                            <th style="width: 160px;">% Avance Promedio</th>
+                            <th style="width: 110px;">Fecha Comp.</th>
+                            <th>Comentario Puntual</th>
+                        </tr>
+                        <!-- Fila de Filtros por Columna -->
+                        <tr class="filter-row">
+                            <th><input type="text" class="filter-input" placeholder="Filtrar..." onkeyup="applyColumnFilters()"></th>
+                            <th><input type="text" class="filter-input" placeholder="Filtrar..." onkeyup="applyColumnFilters()"></th>
+                            <th><input type="text" class="filter-input" placeholder="Filtrar..." onkeyup="applyColumnFilters()"></th>
+                            <th><input type="text" class="filter-input" placeholder="Filtrar..." onkeyup="applyColumnFilters()"></th>
+                            <th>
+                                <select class="filter-input" onchange="applyColumnFilters()">
+                                    <option value="">Todos</option>
+                                    <option value="En tiempo">En tiempo</option>
+                                    <option value="Retrasado">Retrasado</option>
+                                    <option value="Concluido">Concluido</option>
+                                </select>
+                            </th>
+                            <th></th>
+                            <th><input type="text" class="filter-input" placeholder="Filtrar..." onkeyup="applyColumnFilters()"></th>
+                            <th><input type="text" class="filter-input" placeholder="Filtrar..." onkeyup="applyColumnFilters()"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Generado Dinámicamente por JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráficos Gerenciales Macro -->
+        <div class="charts-row">
+            <!-- Gráfico 1: MCR vs Registros Sanitarios -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" contenteditable="true">MCR vs Registros Sanitarios (Anual)</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mcrChart"></canvas>
+                </div>
+                <span class="raw-data-toggle" onclick="toggleRawData('mcrRawData')">📝 Editar Datos Crudos del Gráfico</span>
+                <div class="raw-data-panel" id="mcrRawData">
+                    <table id="mcrTable">
+                        <thead>
+                            <tr><th>Mes</th><th>MCR Sometidos</th><th>Registros Otorgados</th></tr>
+                        </thead>
+                        <tbody><!-- JS --></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gráfico 2: Proyección Mensual -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" contenteditable="true">Proyección Mensual: Entregas Compromiso vs Real</div>
+                </div>
+                <div class="year-selector">
+                    <label for="yearSlider"><strong>Año de Proyección:</strong></label>
+                    <input type="range" id="yearSlider" min="2025" max="2028" value="2026" oninput="updateYearLabel(this.value)">
+                    <span id="yearLabel" style="font-weight: bold; color: var(--teal-cyan);">2026</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="projectionChart"></canvas>
+                </div>
+                <span class="raw-data-toggle" onclick="toggleRawData('projRawData')">📝 Editar Datos Crudos de Proyección</span>
+                <div class="raw-data-panel" id="projRawData">
+                    <table id="projTable">
+                        <thead>
+                            <tr><th>Mes</th><th>Compromiso Meta</th><th>Entregado Real</th></tr>
+                        </thead>
+                        <tbody><!-- JS --></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATOS INICIALES DEL DASHBOARD ---
+        let productsData = [
+            {
+                prio: "P1", name: "Vitamina K3", mfr: "Sinbiotik", resp: "Jesús López", status: "En tiempo", comp: "Ene-28", comment: "Estabilidad acelerada NOM-073 en curso.",
+                hitos: [
+                    { name: "Llegada de API", status: "En tiempo", pct: 10, comp: "Sep-27" },
+                    { name: "Fabricación de Lotes", status: "En tiempo", pct: 15, comp: "Oct-27" },
+                    { name: "Estabilidad", status: "En tiempo", pct: 50, comp: "Nov-27" },
+                    { name: "Entrega de Dossier", status: "En tiempo", pct: 45, comp: "Dic-27" },
+                    { name: "MCR", status: "En tiempo", pct: 10, comp: "Ene-28" }
+                ]
+            },
+            {
+                prio: "P2", name: "Estazolam", mfr: "Cambrex", resp: "Jesús López", status: "Retrasado", comp: "Jun-28", comment: "Retraso en aduana por liberación de certificado.",
+                hitos: [
+                    { name: "Llegada de API", status: "Retrasado", pct: 90, comp: "Feb-28" },
+                    { name: "Fabricación de Lotes", status: "En tiempo", pct: 40, comp: "Mar-28" },
+                    { name: "Estabilidad", status: "En tiempo", pct: 30, comp: "Abr-28" },
+                    { name: "Entrega de Dossier", status: "En tiempo", pct: 50, comp: "May-28" },
+                    { name: "MCR", status: "En tiempo", pct: 10, comp: "Jun-28" }
+                ]
+            },
+            {
+                prio: "P3", name: "Albendazol", mfr: "Viyash", resp: "R&D Equipo", status: "En tiempo", comp: "Nov-28", comment: "Documentación técnica inicial completada.",
+                hitos: [
+                    { name: "Llegada de API", status: "En tiempo", pct: 0, comp: "Jul-28" },
+                    { name: "Fabricación de Lotes", status: "En tiempo", pct: 0, comp: "Ago-28" },
+                    { name: "Estabilidad", status: "En tiempo", pct: 0, comp: "Sep-28" },
+                    { name: "Entrega de Dossier", status: "En tiempo", pct: 0, comp: "Oct-28" },
+                    { name: "MCR", status: "En tiempo", pct: 0, comp: "Nov-28" }
+                ]
+            },
+            {
+                prio: "P4", name: "Dicloxacilina", mfr: "Penam", resp: "R&D Equipo", status: "En tiempo", comp: "Dic-28", comment: "Programación de lote piloto en semana 45.",
+                hitos: [
+                    { name: "Llegada de API", status: "En tiempo", pct: 0, comp: "Dic-28" },
+                    { name: "Fabricación de Lotes", status: "En tiempo", pct: 0, comp: "Ene-29" },
+                    { name: "Estabilidad", status: "En tiempo", pct: 0, comp: "Feb-29" },
+                    { name: "Entrega de Dossier", status: "En tiempo", pct: 0, comp: "Mar-29" },
+                    { name: "MCR", status: "En tiempo", pct: 0, comp: "Abr-29" }
+                ]
+            },
+            {
+                prio: "P5", name: "Guayacol", mfr: "Probiomed", resp: "Jesús López", status: "Concluido", comp: "Ene-29", comment: "Transferencia de tecnología completada.",
+                hitos: [
+                    { name: "Llegada de API", status: "Concluido", pct: 100, comp: "Ene-28" },
+                    { name: "Fabricación de Lotes", status: "Concluido", pct: 100, comp: "Feb-28" },
+                    { name: "Estabilidad", status: "Concluido", pct: 100, comp: "Mar-28" },
+                    { name: "Entrega de Dossier", status: "Concluido", pct: 100, comp: "Abr-28" },
+                    { name: "MCR", status: "Concluido", pct: 100, comp: "May-28" }
+                ]
+            },
+            {
+                prio: "P6", name: "Paracetamol", mfr: "Sr Krishna", resp: "R&D Equipo", status: "En tiempo", comp: "Mar-29", comment: "Evaluación FMF aprobada.",
+                hitos: [
+                    { name: "Llegada de API", status: "En tiempo", pct: 0, comp: "Ene-29" },
+                    { name: "Fabricación de Lotes", status: "En tiempo", pct: 0, comp: "Feb-29" },
+                    { name: "Estabilidad", status: "En tiempo", pct: 0, comp: "Mar-29" },
+                    { name: "Entrega de Dossier", status: "En tiempo", pct: 0, comp: "Abr-29" },
+                    { name: "MCR", status: "En tiempo", pct: 0, comp: "May-29" }
+                ]
+            },
+            {
+                prio: "P7", name: "Orfenadrina", mfr: "RL Fine", resp: "R&D Equipo", status: "En tiempo", comp: "May-29", comment: "Protocolo de desarrollo en revisión.",
+                hitos: [
+                    { name: "Llegada de API", status: "En tiempo", pct: 0, comp: "Mar-29" },
+                    { name: "Fabricación de Lotes", status: "En tiempo", pct: 0, comp: "Abr-29" },
+                    { name: "Estabilidad", status: "En tiempo", pct: 0, comp: "May-29" },
+                    { name: "Entrega de Dossier", status: "En tiempo", pct: 0, comp: "Jun-29" },
+                    { name: "MCR", status: "En tiempo", pct: 0, comp: "Jul-29" }
+                ]
+            }
+        ];
+
+        // Raw Data Charts
+        let mcrData = [
+            { month: "Ene", mcr: 2, reg: 1 }, { month: "Feb", mcr: 3, reg: 2 }, { month: "Mar", mcr: 1, reg: 1 },
+            { month: "Abr", mcr: 4, reg: 2 }, { month: "May", mcr: 2, reg: 3 }, { month: "Jun", mcr: 3, reg: 2 },
+            { month: "Jul", mcr: 2, reg: 1 }, { month: "Ago", mcr: 4, reg: 3 }, { month: "Sep", mcr: 3, reg: 2 }
+        ];
+
+        let projData = [
+            { month: "Ene", comp: 1, real: 1 }, { month: "Feb", comp: 2, real: 2 }, { month: "Mar", comp: 1, real: 1 },
+            { month: "Abr", comp: 3, real: 2 }, { month: "May", comp: 2, real: 2 }, { month: "Jun", comp: 4, real: 3 },
+            { month: "Jul", comp: 2, real: 1 }, { month: "Ago", comp: 3, real: 3 }, { month: "Sep", comp: 2, real: 1 }
+        ];
+
+        let expandedRows = { 0: true, 1: true }; // P1 y P2 abiertos por defecto
+
+        // --- RENDERIZADO DE TABLA ---
+        function renderTable() {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = "";
+
+            productsData.forEach((prod, pIdx) => {
+                // Cálculo de Promedio
+                const avgPct = Math.round(prod.hitos.reduce((acc, h) => acc + h.pct, 0) / prod.hitos.length);
+                const isExpanded = expandedRows[pIdx];
+
+                // Fila Padre
+                const pTr = document.createElement("tr");
+                pTr.className = "parent-row";
+                pTr.setAttribute("data-pindex", pIdx);
+                pTr.innerHTML = `
+                    <td><strong>${prod.prio}</strong></td>
+                    <td onclick="toggleRow(${pIdx})" style="cursor:pointer;">
+                        ${isExpanded ? '▼' : '▶'} <strong>${prod.name}</strong>
+                    </td>
+                    <td contenteditable="true" onblur="updateProdField(${pIdx}, 'mfr', this.innerText)">${prod.mfr}</td>
+                    <td contenteditable="true" onblur="updateProdField(${pIdx}, 'resp', this.innerText)">${prod.resp}</td>
+                    <td>
+                        <select class="status-select ${getStatusClass(prod.status)}" onchange="updateProdStatus(${pIdx}, this.value)">
+                            <option value="En tiempo" ${prod.status === "En tiempo" ? "selected" : ""}>🟢 En tiempo</option>
+                            <option value="Retrasado" ${prod.status === "Retrasado" ? "selected" : ""}>🔴 Retrasado</option>
+                            <option value="Concluido" ${prod.status === "Concluido" ? "selected" : ""}>🔵 Concluido</option>
+                        </select>
+                    </td>
+                    <td>
+                        <div class="percent-control">
+                            <input type="range" min="0" max="100" value="${avgPct}" disabled>
+                            <span style="font-weight:bold;">${avgPct}%</span>
+                        </div>
+                    </td>
+                    <td contenteditable="true" onblur="updateProdField(${pIdx}, 'comp', this.innerText)">${prod.comp}</td>
+                    <td contenteditable="true" onblur="updateProdField(${pIdx}, 'comment', this.innerText)">${prod.comment}</td>
+                `;
+                tbody.appendChild(pTr);
+
+                // Filas Hijos (Sub-hitos)
+                if (isExpanded) {
+                    prod.hitos.forEach((hito, hIdx) => {
+                        const hTr = document.createElement("tr");
+                        hTr.className = "sub-row";
+                        hTr.innerHTML = `
+                            <td></td>
+                            <td class="indent">└ ${hito.name}</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>
+                                <select class="status-select ${getStatusClass(hito.status)}" onchange="updateHitoStatus(${pIdx}, ${hIdx}, this.value)">
+                                    <option value="En tiempo" ${hito.status === "En tiempo" ? "selected" : ""}>🟢 En tiempo</option>
+                                    <option value="Retrasado" ${hito.status === "Retrasado" ? "selected" : ""}>🔴 Retrasado</option>
+                                    <option value="Concluido" ${hito.status === "Concluido" ? "selected" : ""}>🔵 Concluido</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div class="percent-control">
+                                    <input type="range" min="0" max="100" value="${hito.pct}" oninput="updateHitoPct(${pIdx}, ${hIdx}, this.value, 'range')">
+                                    <input type="number" min="0" max="100" value="${hito.pct}" onchange="updateHitoPct(${pIdx}, ${hIdx}, this.value, 'num')">%
+                                </div>
+                            </td>
+                            <td contenteditable="true" onblur="updateHitoComp(${pIdx}, ${hIdx}, this.innerText)">${hito.comp}</td>
+                            <td>—</td>
+                        `;
+                        tbody.appendChild(hTr);
+                    });
+                }
+            });
+
+            updateKPIs();
+        }
+
+        function getStatusClass(status) {
+            if (status === "En tiempo") return "tiempo";
+            if (status === "Retrasado") return "retraso";
+            if (status === "Concluido") return "concluido";
+            return "";
+        }
+
+        function toggleRow(pIdx) {
+            expandedRows[pIdx] = !expandedRows[pIdx];
+            renderTable();
+        }
+
+        function toggleExpandAll() {
+            const hasUnexpanded = productsData.some((_, idx) => !expandedRows[idx]);
+            productsData.forEach((_, idx) => expandedRows[idx] = hasUnexpanded);
+            renderTable();
+        }
+
+        // --- ACTUALIZACIÓN DE CAMPOS ---
+        function updateProdField(pIdx, field, val) {
+            productsData[pIdx][field] = val;
+        }
+
+        function updateProdStatus(pIdx, val) {
+            productsData[pIdx].status = val;
+            renderTable();
+        }
+
+        function updateHitoStatus(pIdx, hIdx, val) {
+            productsData[pIdx].hitos[hIdx].status = val;
+            renderTable();
+        }
+
+        function updateHitoPct(pIdx, hIdx, val, source) {
+            let num = parseInt(val) || 0;
+            if (num < 0) num = 0;
+            if (num > 100) num = 100;
+            productsData[pIdx].hitos[hIdx].pct = num;
+            renderTable();
+        }
+
+        function updateHitoComp(pIdx, hIdx, val) {
+            productsData[pIdx].hitos[hIdx].comp = val;
+        }
+
+        // --- KPIS ---
+        function updateKPIs() {
+            const total = productsData.length;
+            const enTiempo = productsData.filter(p => p.status === "En tiempo").length;
+            const retrasados = productsData.filter(p => p.status === "Retrasado").length;
+            const concluidos = productsData.filter(p => p.status === "Concluido").length;
+
+            const pctGlobal = total > 0 ? ((enTiempo / total) * 100).toFixed(1) : 0;
+
+            document.getElementById("kpi-total").innerText = total;
+            document.getElementById("kpi-tiempo").innerText = enTiempo;
+            document.getElementById("kpi-mes").innerText = Math.ceil(enTiempo / 2);
+            document.getElementById("kpi-global").innerText = pctGlobal + "%";
+
+            // Bar segment updates
+            document.getElementById("kpi-bar-tiempo").style.width = ((enTiempo / total) * 100) + "%";
+            document.getElementById("kpi-bar-retraso").style.width = ((retrasados / total) * 100) + "%";
+            document.getElementById("kpi-bar-concluido").style.width = ((concluidos / total) * 100) + "%";
+        }
+
+        // --- FILTROS POR COLUMNA ---
+        function applyColumnFilters() {
+            const inputs = document.querySelectorAll(".filter-row .filter-input");
+            const filterPrio = inputs[0].value.toLowerCase();
+            const filterName = inputs[1].value.toLowerCase();
+            const filterMfr = inputs[2].value.toLowerCase();
+            const filterResp = inputs[3].value.toLowerCase();
+            const filterStatus = inputs[4].value.toLowerCase();
+            const filterComp = inputs[6].value.toLowerCase();
+            const filterComment = inputs[7].value.toLowerCase();
+
+            const rows = document.querySelectorAll("#tableBody tr");
+            let currentParentVisible = true;
+
+            rows.forEach(row => {
+                if (row.classList.contains("parent-row")) {
+                    const cells = row.querySelectorAll("td");
+                    const prio = cells[0].innerText.toLowerCase();
+                    const name = cells[1].innerText.toLowerCase();
+                    const mfr = cells[2].innerText.toLowerCase();
+                    const resp = cells[3].innerText.toLowerCase();
+                    const status = row.querySelector("select").value.toLowerCase();
+                    const comp = cells[6].innerText.toLowerCase();
+                    const comment = cells[7].innerText.toLowerCase();
+
+                    const matches = prio.includes(filterPrio) &&
+                                    name.includes(filterName) &&
+                                    mfr.includes(filterMfr) &&
+                                    resp.includes(filterResp) &&
+                                    (filterStatus === "" || status === filterStatus) &&
+                                    comp.includes(filterComp) &&
+                                    comment.includes(filterComment);
+
+                    currentParentVisible = matches;
+                    row.style.display = matches ? "" : "none";
+                } else {
+                    row.style.display = currentParentVisible ? "" : "none";
+                }
+            });
+        }
+
+        // --- GRÁFICOS (CHART.JS) ---
+        let chartMCR, chartProj;
+
+        function initCharts() {
+            // Chart 1: MCR vs Registros
+            const ctx1 = document.getElementById("mcrChart").getContext("2d");
+            chartMCR = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: mcrData.map(d => d.month),
+                    datasets: [
+                        { label: 'MCR Sometidos', data: mcrData.map(d => d.mcr), backgroundColor: 'rgb(0, 32, 96)' },
+                        { label: 'Registros Otorgados', data: mcrData.map(d => d.reg), backgroundColor: 'rgb(0, 153, 153)' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Chart 2: Proyección Mensual
+            const ctx2 = document.getElementById("projectionChart").getContext("2d");
+            chartProj = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: projData.map(d => d.month),
+                    datasets: [
+                        { label: 'Compromiso Meta', data: projData.map(d => d.comp), borderColor: 'rgb(0, 32, 96)', backgroundColor: 'rgba(0, 32, 96, 0.1)', fill: true, tension: 0.3 },
+                        { label: 'Entregado Real', data: projData.map(d => d.real), borderColor: 'rgb(0, 153, 153)', backgroundColor: 'rgba(0, 153, 153, 0.2)', fill: true, tension: 0.3 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            renderRawTables();
+        }
+
+        function toggleRawData(id) {
+            const panel = document.getElementById(id);
+            panel.classList.toggle("active");
+        }
+
+        function renderRawTables() {
+            // MCR Table
+            const tbody1 = document.querySelector("#mcrTable tbody");
+            tbody1.innerHTML = "";
+            mcrData.forEach((d, idx) => {
+                tbody1.innerHTML += `<tr>
+                    <td>${d.month}</td>
+                    <td contenteditable="true" onblur="updateMcrRaw(${idx}, 'mcr', this.innerText)">${d.mcr}</td>
+                    <td contenteditable="true" onblur="updateMcrRaw(${idx}, 'reg', this.innerText)">${d.reg}</td>
+                </tr>`;
+            });
+
+            // Proj Table
+            const tbody2 = document.querySelector("#projTable tbody");
+            tbody2.innerHTML = "";
+            projData.forEach((d, idx) => {
+                tbody2.innerHTML += `<tr>
+                    <td>${d.month}</td>
+                    <td contenteditable="true" onblur="updateProjRaw(${idx}, 'comp', this.innerText)">${d.comp}</td>
+                    <td contenteditable="true" onblur="updateProjRaw(${idx}, 'real', this.innerText)">${d.real}</td>
+                </tr>`;
+            });
+        }
+
+        function updateMcrRaw(idx, key, val) {
+            mcrData[idx][key] = parseInt(val) || 0;
+            chartMCR.data.datasets[0].data = mcrData.map(d => d.mcr);
+            chartMCR.data.datasets[1].data = mcrData.map(d => d.reg);
+            chartMCR.update();
+        }
+
+        function updateProjRaw(idx, key, val) {
+            projData[idx][key] = parseInt(val) || 0;
+            chartProj.data.datasets[0].data = projData.map(d => d.comp);
+            chartProj.data.datasets[1].data = projData.map(d => d.real);
+            chartProj.update();
+        }
+
+        function updateYearLabel(val) {
+            document.getElementById("yearLabel").innerText = val;
+        }
+
+        // --- MODO CLARO / OSCURO ---
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute("data-theme");
+            if (currentTheme === "dark") {
+                document.body.removeAttribute("data-theme");
+            } else {
+                document.body.setAttribute("data-theme", "dark");
+            }
+        }
+
+        // --- EXPORTAR EXCEL (CSV) ---
+        function exportCSV() {
+            let csv = "Prioridad,Materia Prima / Hito,Fabricante,Responsable,Estatus,% Avance,Fecha Compromiso,Comentario\n";
+            productsData.forEach(p => {
+                const avgPct = Math.round(p.hitos.reduce((acc, h) => acc + h.pct, 0) / p.hitos.length);
+                csv += `"${p.prio}","${p.name}","${p.mfr}","${p.resp}","${p.status}","${avgPct}%","${p.comp}","${p.comment}"\n`;
+                p.hitos.forEach(h => {
+                    csv += `,"-- ${h.name}",-,-,"${h.status}","${h.pct}%","${h.comp}",-\n`;
+                });
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "Reporte_Transferencia_Tecnologia.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- INICIALIZACIÓN ---
+        window.onload = function() {
+            renderTable();
+            initCharts();
+        };
+    </script>
+</body>
+</html>
